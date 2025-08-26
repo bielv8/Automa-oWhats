@@ -187,13 +187,17 @@
 
 {% block scripts %}
 <script>
+// Clear any existing intervals to prevent conflicts
+if (typeof connectionCheckInterval !== 'undefined' && connectionCheckInterval) {
+    clearInterval(connectionCheckInterval);
+}
+if (typeof qrCheckInterval !== 'undefined' && qrCheckInterval) {
+    clearInterval(qrCheckInterval);
+}
+
 // Global variables for polling intervals
-if (typeof connectionCheckInterval === 'undefined') {
-    var connectionCheckInterval;
-}
-if (typeof qrCheckInterval === 'undefined') {
-    var qrCheckInterval;
-}
+var connectionCheckInterval;
+var qrCheckInterval;
 
 $(document).ready(function() {
     checkConnection();

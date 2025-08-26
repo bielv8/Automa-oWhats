@@ -4,23 +4,26 @@
 1. Conta no Railway (railway.app)
 2. GitHub/GitLab conectado ao Railway
 
-## ⚠️ SOLUÇÃO PARA ERRO DE SNAPSHOT
+## ⚠️ SOLUÇÕES PARA ERROS DE DEPLOY
 
-Se aparecer "Failed to snapshot repository", faça:
+### Erro: "Failed to snapshot repository"
+```bash
+git rm --cached -r .cache/ || true
+git add .gitignore
+git commit -m "Clean cache files for Railway deploy"
+git push --force-with-lease
+```
 
-1. **Limpe arquivos cache localmente:**
-   ```bash
-   git rm --cached -r .cache/ || true
-   git add .gitignore
-   git commit -m "Clean cache files for Railway deploy"
-   ```
+### Erro: "pip: command not found"
+1. **Use o Dockerfile em vez de Nixpacks**
+2. **No Railway, vá em Settings > Build**
+3. **Mude de "Nixpacks" para "Dockerfile"**
+4. **Redeploy**
 
-2. **Force push se necessário:**
-   ```bash
-   git push --force-with-lease
-   ```
-
-3. **Tente deploy novamente no Railway**
+### Alternativa: Deploy Manual
+1. **Conecte repositório GitHub**
+2. **Railway detecta automaticamente**
+3. **Se falhar, force Dockerfile build**
 
 ## Passos para Deploy
 

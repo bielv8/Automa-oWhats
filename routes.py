@@ -2,6 +2,7 @@ from flask import render_template, request, redirect, url_for, flash, jsonify
 from app import app, db
 from models import Contact, MessageTemplate, Campaign, CampaignContact, WhatsAppConnection, ActivityLog
 from whatsapp_service import WhatsAppService
+from whatsapp_selenium import WhatsAppSeleniumService
 import csv
 import json
 import io
@@ -9,6 +10,7 @@ from datetime import datetime
 import re
 
 whatsapp_service = WhatsAppService()
+whatsapp_selenium = WhatsAppSeleniumService()
 
 @app.route('/')
 def index():
@@ -248,8 +250,8 @@ def start_campaign(campaign_id):
         flash('Campanha já foi iniciada', 'warning')
         return redirect(url_for('campaigns'))
     
-    # Start the campaign simulation
-    result = whatsapp_service.start_campaign(campaign)
+    # Start the campaign with real WhatsApp
+    result = whatsapp_selenium.start_campaign(campaign)
     
     if result['success']:
         flash('Campanha iniciada com sucesso!', 'success')
@@ -266,6 +268,11 @@ def history():
     
     return render_template('history.html', logs=logs)
 
+@app.route('/whatsapp')
+def whatsapp_page():
+    """WhatsApp connection management page"""
+    return render_template('whatsapp.html')
+
 @app.route('/connection/check')
 def check_connection():
     connection = WhatsAppConnection.query.first()
@@ -274,8 +281,8 @@ def check_connection():
         db.session.add(connection)
         db.session.commit()
     
-    # Simulate connection check
-    status = whatsapp_service.check_connection()
+    # Use real WhatsApp connection
+    status = whatsapp_selenium.check_connection()
     connection.status = status['status']
     connection.last_check = datetime.utcnow()
     
@@ -286,6 +293,89 @@ def check_connection():
     db.session.commit()
     
     return jsonify(status)
+
+@app.route('/connection/connect')
+def connect_whatsapp():
+    """Connect to WhatsApp Web"""
+    try:
+        result = whatsapp_selenium.connect_to_whatsapp()
+        
+        # Update database
+        connection = WhatsAppConnection.query.first()
+        if not connection:
+            connection = WhatsAppConnection(session_name="default")
+            db.session.add(connection)
+        
+        if result.get('success'):
+            if result.get('status') == 'connected':
+                connection.status = 'connected'
+                connection.phone_number = result.get('phone_number')
+                connection.profile_name = result.get('profile_name')
+                log_activity('whatsapp_connected', 'WhatsApp Web conectado com sucesso')
+            elif result.get('status') == 'qr_code':
+                connection.status = 'connecting'
+        else:
+            connection.status = 'disconnected'
+            log_activity('whatsapp_connection_failed', result.get('message', 'Falha na conexão'), 'error')
+        
+        connection.last_check = datetime.utcnow()
+        db.session.commit()
+        
+        return jsonify(result)
+        
+    except Exception as e:
+        app.logger.error(f"Error connecting to WhatsApp: {e}")
+        return jsonify({
+            'success': False,
+            'message': f'Erro ao conectar: {str(e)}'
+        }), 500
+
+@app.route('/connection/qr')
+def get_qr_code():
+    """Get QR code for WhatsApp Web login"""
+    try:
+        qr_data = whatsapp_selenium.qr_code_data
+        if qr_data:
+            return jsonify({
+                'success': True,
+                'qr_code': qr_data
+            })
+        else:
+            return jsonify({
+                'success': False,
+                'message': 'QR Code não disponível'
+            })
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'message': f'Erro ao obter QR Code: {str(e)}'
+        }), 500
+
+@app.route('/connection/disconnect')
+def disconnect_whatsapp():
+    """Disconnect from WhatsApp Web"""
+    try:
+        whatsapp_selenium.close()
+        
+        # Update database
+        connection = WhatsAppConnection.query.first()
+        if connection:
+            connection.status = 'disconnected'
+            connection.last_check = datetime.utcnow()
+            db.session.commit()
+        
+        log_activity('whatsapp_disconnected', 'WhatsApp Web desconectado')
+        
+        return jsonify({
+            'success': True,
+            'message': 'WhatsApp Web desconectado'
+        })
+        
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'message': f'Erro ao desconectar: {str(e)}'
+        }), 500
 
 # Helper functions
 def validate_phone(phone):

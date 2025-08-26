@@ -1,0 +1,433 @@
+{% extends "base.html" %}
+
+{% block title %}Conexão WhatsApp - WhatsApp Automation{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <h1 class="h3 mb-4">
+            <i class="fab fa-whatsapp text-success me-2"></i>
+            Conexão WhatsApp Web
+        </h1>
+    </div>
+</div>
+
+<!-- Connection Status -->
+<div class="row mb-4">
+    <div class="col-md-8">
+        <div class="card" id="connection-status-card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-signal me-2"></i>
+                    Status da Conexão
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="row align-items-center">
+                    <div class="col-md-6">
+                        <div class="d-flex align-items-center mb-3">
+                            <div class="me-3">
+                                <div id="status-indicator" class="status-indicator bg-secondary"></div>
+                            </div>
+                            <div>
+                                <h6 class="mb-1" id="connection-status-text">Verificando...</h6>
+                                <small class="text-muted" id="connection-details">Aguardando verificação</small>
+                            </div>
+                        </div>
+                        
+                        <div id="connection-info" style="display: none;">
+                            <div class="mb-2">
+                                <strong>Telefone:</strong> <span id="phone-number">-</span>
+                            </div>
+                            <div class="mb-2">
+                                <strong>Nome:</strong> <span id="profile-name">-</span>
+                            </div>
+                            <div class="mb-2">
+                                <strong>Última verificação:</strong> <span id="last-check">-</span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="col-md-6">
+                        <div class="d-grid gap-2">
+                            <button id="connect-btn" class="btn btn-success" onclick="connectWhatsApp()">
+                                <i class="fas fa-plug me-2"></i>Conectar WhatsApp Web
+                            </button>
+                            <button id="disconnect-btn" class="btn btn-danger" onclick="disconnectWhatsApp()" style="display: none;">
+                                <i class="fas fa-unlink me-2"></i>Desconectar
+                            </button>
+                            <button id="refresh-btn" class="btn btn-outline-primary" onclick="checkConnection()">
+                                <i class="fas fa-sync-alt me-2"></i>Verificar Status
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-header">
+                <h6 class="card-title mb-0">
+                    <i class="fas fa-info-circle me-2"></i>
+                    Como Conectar
+                </h6>
+            </div>
+            <div class="card-body">
+                <ol class="mb-0">
+                    <li class="mb-2">Clique em "Conectar WhatsApp Web"</li>
+                    <li class="mb-2">Aguarde o QR Code aparecer</li>
+                    <li class="mb-2">Abra o WhatsApp no seu celular</li>
+                    <li class="mb-2">Vá em Configurações > WhatsApp Web</li>
+                    <li class="mb-0">Escaneie o QR Code</li>
+                </ol>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- QR Code Section -->
+<div class="row mb-4" id="qr-section" style="display: none;">
+    <div class="col-12">
+        <div class="card border-warning">
+            <div class="card-header bg-warning">
+                <h5 class="card-title mb-0 text-dark">
+                    <i class="fas fa-qrcode me-2"></i>
+                    Escaneie o QR Code
+                </h5>
+            </div>
+            <div class="card-body text-center">
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="qr-container mb-3">
+                            <img id="qr-image" src="" alt="QR Code" class="img-fluid border rounded" style="max-width: 300px;">
+                        </div>
+                        <div class="spinner-border text-warning" id="qr-loading" role="status">
+                            <span class="visually-hidden">Carregando QR Code...</span>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="alert alert-info text-start">
+                            <h6><i class="fas fa-mobile-alt me-2"></i>Instruções:</h6>
+                            <ol class="mb-0">
+                                <li>Abra o WhatsApp no seu celular</li>
+                                <li>Toque nos três pontos (⋮) ou vá em Configurações</li>
+                                <li>Selecione "WhatsApp Web"</li>
+                                <li>Toque em "Escanear código QR"</li>
+                                <li>Aponte a câmera para o código acima</li>
+                            </ol>
+                        </div>
+                        
+                        <div class="alert alert-warning">
+                            <i class="fas fa-clock me-2"></i>
+                            O QR Code expira em alguns minutos. Se não conseguir escanear, clique em "Conectar" novamente.
+                        </div>
+                        
+                        <button class="btn btn-outline-warning" onclick="connectWhatsApp()">
+                            <i class="fas fa-redo me-2"></i>Novo QR Code
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Connection History -->
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h6 class="card-title mb-0">
+                    <i class="fas fa-history me-2"></i>
+                    Histórico de Conexões
+                </h6>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-sm">
+                        <thead>
+                            <tr>
+                                <th>Data/Hora</th>
+                                <th>Ação</th>
+                                <th>Status</th>
+                                <th>Detalhes</th>
+                            </tr>
+                        </thead>
+                        <tbody id="connection-history">
+                            <tr>
+                                <td colspan="4" class="text-center text-muted">
+                                    <em>Nenhum histórico de conexão disponível</em>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Loading Modal -->
+<div class="modal fade" id="loadingModal" tabindex="-1" data-bs-backdrop="static">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-body text-center py-4">
+                <div class="spinner-border text-primary mb-3" role="status">
+                    <span class="visually-hidden">Carregando...</span>
+                </div>
+                <h5 id="loading-message">Conectando ao WhatsApp Web...</h5>
+                <p class="text-muted mb-0" id="loading-details">Isso pode levar alguns segundos</p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+let connectionCheckInterval;
+let qrCheckInterval;
+
+$(document).ready(function() {
+    checkConnection();
+    // Auto-refresh connection status every 10 seconds
+    connectionCheckInterval = setInterval(checkConnection, 10000);
+});
+
+function checkConnection() {
+    fetch('/connection/check')
+        .then(response => response.json())
+        .then(data => {
+            updateConnectionStatus(data);
+        })
+        .catch(error => {
+            console.error('Error checking connection:', error);
+            updateConnectionStatus({
+                status: 'error',
+                message: 'Erro ao verificar conexão'
+            });
+        });
+}
+
+function updateConnectionStatus(data) {
+    const statusCard = $('#connection-status-card');
+    const statusIndicator = $('#status-indicator');
+    const statusText = $('#connection-status-text');
+    const statusDetails = $('#connection-details');
+    const connectionInfo = $('#connection-info');
+    const connectBtn = $('#connect-btn');
+    const disconnectBtn = $('#disconnect-btn');
+    
+    // Hide QR section by default
+    $('#qr-section').hide();
+    
+    switch(data.status) {
+        case 'connected':
+            statusCard.removeClass().addClass('card border-success');
+            statusIndicator.removeClass().addClass('status-indicator bg-success');
+            statusText.text('Conectado').removeClass().addClass('text-success');
+            statusDetails.text('WhatsApp Web conectado e funcionando');
+            
+            // Show connection info
+            if (data.phone_number) $('#phone-number').text(data.phone_number);
+            if (data.profile_name) $('#profile-name').text(data.profile_name);
+            $('#last-check').text(new Date().toLocaleString());
+            connectionInfo.show();
+            
+            connectBtn.hide();
+            disconnectBtn.show();
+            break;
+            
+        case 'disconnected':
+            statusCard.removeClass().addClass('card border-danger');
+            statusIndicator.removeClass().addClass('status-indicator bg-danger');
+            statusText.text('Desconectado').removeClass().addClass('text-danger');
+            statusDetails.text(data.message || 'WhatsApp Web não está conectado');
+            
+            connectionInfo.hide();
+            connectBtn.show();
+            disconnectBtn.hide();
+            break;
+            
+        case 'connecting':
+            statusCard.removeClass().addClass('card border-warning');
+            statusIndicator.removeClass().addClass('status-indicator bg-warning');
+            statusText.text('Conectando...').removeClass().addClass('text-warning');
+            statusDetails.text('Aguardando escaneamento do QR Code');
+            
+            connectionInfo.hide();
+            connectBtn.hide();
+            disconnectBtn.show();
+            break;
+            
+        default:
+            statusCard.removeClass().addClass('card border-secondary');
+            statusIndicator.removeClass().addClass('status-indicator bg-secondary');
+            statusText.text('Verificando...').removeClass().addClass('text-secondary');
+            statusDetails.text('Verificando status da conexão');
+            
+            connectionInfo.hide();
+            connectBtn.show();
+            disconnectBtn.hide();
+    }
+}
+
+function connectWhatsApp() {
+    showLoadingModal('Conectando ao WhatsApp Web...', 'Iniciando navegador e carregando WhatsApp Web');
+    
+    fetch('/connection/connect')
+        .then(response => response.json())
+        .then(data => {
+            hideLoadingModal();
+            
+            if (data.success) {
+                if (data.status === 'connected') {
+                    showNotification('WhatsApp Web conectado com sucesso!', 'success');
+                    checkConnection();
+                } else if (data.status === 'qr_code') {
+                    showQRCode(data.qr_code);
+                    startQRPolling();
+                }
+            } else {
+                showNotification(data.message || 'Erro ao conectar ao WhatsApp Web', 'error');
+            }
+        })
+        .catch(error => {
+            hideLoadingModal();
+            console.error('Error connecting to WhatsApp:', error);
+            showNotification('Erro ao conectar ao WhatsApp Web', 'error');
+        });
+}
+
+function disconnectWhatsApp() {
+    if (!confirm('Tem certeza que deseja desconectar do WhatsApp Web?')) {
+        return;
+    }
+    
+    showLoadingModal('Desconectando...', 'Fechando conexão com WhatsApp Web');
+    
+    fetch('/connection/disconnect')
+        .then(response => response.json())
+        .then(data => {
+            hideLoadingModal();
+            
+            if (data.success) {
+                showNotification('WhatsApp Web desconectado', 'info');
+                checkConnection();
+                $('#qr-section').hide();
+                if (qrCheckInterval) {
+                    clearInterval(qrCheckInterval);
+                }
+            } else {
+                showNotification(data.message || 'Erro ao desconectar', 'error');
+            }
+        })
+        .catch(error => {
+            hideLoadingModal();
+            console.error('Error disconnecting from WhatsApp:', error);
+            showNotification('Erro ao desconectar', 'error');
+        });
+}
+
+function showQRCode(qrData) {
+    $('#qr-loading').hide();
+    $('#qr-image').attr('src', 'data:image/png;base64,' + qrData).show();
+    $('#qr-section').show();
+    
+    // Scroll to QR section
+    $('html, body').animate({
+        scrollTop: $("#qr-section").offset().top - 100
+    }, 500);
+}
+
+function startQRPolling() {
+    // Check every 5 seconds if login was successful
+    qrCheckInterval = setInterval(() => {
+        checkConnection();
+    }, 5000);
+    
+    // Stop polling after 2 minutes
+    setTimeout(() => {
+        if (qrCheckInterval) {
+            clearInterval(qrCheckInterval);
+        }
+    }, 120000);
+}
+
+function showLoadingModal(title, details) {
+    $('#loading-message').text(title);
+    $('#loading-details').text(details);
+    $('#loadingModal').modal('show');
+}
+
+function hideLoadingModal() {
+    $('#loadingModal').modal('hide');
+}
+
+function showNotification(message, type) {
+    // Create notification element
+    const alertClass = type === 'error' ? 'alert-danger' : 
+                      type === 'success' ? 'alert-success' : 
+                      type === 'info' ? 'alert-info' : 'alert-warning';
+    
+    const notification = $(`
+        <div class="alert ${alertClass} alert-dismissible fade show" role="alert">
+            ${message}
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    `);
+    
+    // Add to page
+    $('.container').first().prepend(notification);
+    
+    // Auto-remove after 5 seconds
+    setTimeout(() => {
+        notification.alert('close');
+    }, 5000);
+}
+
+// Cleanup intervals when page is closed
+$(window).on('beforeunload', function() {
+    if (connectionCheckInterval) {
+        clearInterval(connectionCheckInterval);
+    }
+    if (qrCheckInterval) {
+        clearInterval(qrCheckInterval);
+    }
+});
+</script>
+
+<style>
+.status-indicator {
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    display: inline-block;
+    animation: pulse 2s infinite;
+}
+
+.status-indicator.bg-success {
+    animation: none;
+}
+
+@keyframes pulse {
+    0% { opacity: 1; }
+    50% { opacity: 0.5; }
+    100% { opacity: 1; }
+}
+
+.qr-container {
+    background: white;
+    padding: 20px;
+    border-radius: 10px;
+    display: inline-block;
+}
+
+#qr-image {
+    background: white;
+    padding: 10px;
+}
+</style>
+{% endblock %}

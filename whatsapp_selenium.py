@@ -10,7 +10,7 @@ from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.firefox.options import Options
 from selenium.webdriver.firefox.service import Service
 from webdriver_manager.firefox import GeckoDriverManager
-from selenium.common.exceptions import TimeoutException, NoSuchElementException
+from selenium.common.exceptions import TimeoutException, NoSuchElementException, WebDriverException
 import qrcode
 from io import BytesIO
 import base64
@@ -31,63 +31,78 @@ class WhatsAppSeleniumService:
         
     def start_browser(self):
         """Initialize and start the browser"""
-        try:
-            # Configure Firefox options for Railway deployment
-            options = Options()
-            options.add_argument('--headless')
-            options.add_argument('--no-sandbox')
-            options.add_argument('--disable-dev-shm-usage')
-            options.add_argument('--disable-gpu')
-            options.add_argument('--width=1920')
-            options.add_argument('--height=1080')
-            options.add_argument('--disable-blink-features=AutomationControlled')
-            options.add_argument('--disable-extensions')
-            options.add_argument('--disable-plugins-discovery')
-            options.add_argument('--disable-web-security')
-            options.add_argument('--allow-running-insecure-content')
-            options.add_argument('--disable-background-timer-throttling')
-            options.add_argument('--disable-backgrounding-occluded-windows')
-            options.add_argument('--disable-renderer-backgrounding')
-            options.add_argument('--disable-features=TranslateUI')
-            options.add_argument('--disable-ipc-flooding-protection')
-            
-            # Railway specific configurations
-            options.add_argument('--single-process')
-            options.add_argument('--disable-background-networking')
-            options.add_argument('--disable-default-apps')
-            options.add_argument('--disable-sync')
-            
-            # Set display for Railway
-            if os.environ.get('RAILWAY_ENVIRONMENT'):
-                os.environ['DISPLAY'] = ':99'
-            
-            # Disable notifications and media autoplay
-            options.set_preference("dom.webnotifications.enabled", False)
-            options.set_preference("media.autoplay.default", 2)
-            options.set_preference("dom.disable_beforeunload", True)
-            
-            # Use webdriver manager for Railway compatibility
-            from webdriver_manager.firefox import GeckoDriverManager
-            service = Service(GeckoDriverManager().install())
-            
-            # Start Firefox with timeout
-            self.driver = webdriver.Firefox(service=service, options=options)
-            self.driver.implicitly_wait(10)
-            self.driver.set_page_load_timeout(30)
-            
-            self.logger.info("Browser started successfully")
-            return True
-            
-        except Exception as e:
-            self.logger.error(f"Failed to start browser: {e}")
-            return False
+        max_retries = 3
+        for attempt in range(max_retries):
+            try:
+                self.logger.info(f"Attempting to start browser (attempt {attempt + 1}/{max_retries})")
+                
+                # Configure Firefox options for Railway deployment
+                options = Options()
+                options.add_argument('--headless')
+                options.add_argument('--no-sandbox')
+                options.add_argument('--disable-dev-shm-usage')
+                options.add_argument('--disable-gpu')
+                options.add_argument('--width=1920')
+                options.add_argument('--height=1080')
+                options.add_argument('--disable-web-security')
+                options.add_argument('--disable-features=VizDisplayCompositor')
+                options.add_argument('--disable-background-timer-throttling')
+                options.add_argument('--disable-backgrounding-occluded-windows')
+                options.add_argument('--disable-renderer-backgrounding')
+                options.add_argument('--disable-extensions')
+                
+                # Memory optimization for limited environments
+                options.add_argument('--memory-pressure-off')
+                options.add_argument('--max_old_space_size=4096')
+                
+                # Railway/Cloud specific
+                if os.environ.get('RAILWAY_ENVIRONMENT') or os.environ.get('PORT'):
+                    options.add_argument('--single-process')
+                    options.add_argument('--disable-background-networking')
+                    options.add_argument('--disable-default-apps')
+                    options.add_argument('--disable-sync')
+                    os.environ['DISPLAY'] = ':99'
+                
+                # Disable notifications and media autoplay
+                options.set_preference("dom.webnotifications.enabled", False)
+                options.set_preference("media.autoplay.default", 2)
+                options.set_preference("dom.disable_beforeunload", True)
+                
+                # Use webdriver manager for Railway compatibility
+                from webdriver_manager.firefox import GeckoDriverManager
+                service = Service(GeckoDriverManager().install())
+                
+                # Start Firefox with timeout
+                self.driver = webdriver.Firefox(service=service, options=options)
+                self.driver.implicitly_wait(10)
+                self.driver.set_page_load_timeout(30)
+                
+                self.logger.info("Browser started successfully")
+                return True
+                
+            except (WebDriverException, TimeoutException) as e:
+                self.logger.warning(f"Browser start attempt {attempt + 1} failed: {e}")
+                if self.driver is not None:
+                    try:
+                        self.driver.quit()
+                    except:
+                        pass
+                    self.driver = None
+                
+                if attempt == max_retries - 1:
+                    self.logger.error(f"Failed to start browser after {max_retries} attempts")
+                    return False
+                
+                time.sleep(2)  # Wait before retry
+                
+        return False
     
     def connect_to_whatsapp(self):
         """Connect to WhatsApp Web"""
         try:
             self.logger.info("Starting WhatsApp Web connection...")
             
-            if not self.driver:
+            if self.driver is None:
                 self.logger.info("Starting browser...")
                 if not self.start_browser():
                     return {'success': False, 'message': 'Falha ao iniciar navegador'}
@@ -149,7 +164,7 @@ class WhatsAppSeleniumService:
     def get_qr_code(self):
         """Get QR code for login"""
         try:
-            if not self.driver:
+            if self.driver is None:
                 self.logger.error("Driver not initialized")
                 return None
                 
@@ -265,7 +280,7 @@ class WhatsAppSeleniumService:
     def check_connection(self):
         """Check current connection status"""
         try:
-            if not self.driver:
+            if self.driver is None:
                 return {
                     'status': 'disconnected',
                     'message': 'Navegador não iniciado'
@@ -513,7 +528,7 @@ class WhatsAppSeleniumService:
     def close(self):
         """Close the browser and cleanup"""
         try:
-            if self.driver:
+            if self.driver is not None:
                 self.driver.quit()
                 self.driver = None
             self.is_connected = False

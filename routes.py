@@ -298,27 +298,8 @@ def check_connection():
 def connect_whatsapp():
     """Connect to WhatsApp Web"""
     try:
-        # Add timeout for the connection attempt
-        import signal
-        
-        def timeout_handler(signum, frame):
-            raise TimeoutError("Connection timeout")
-        
-        # Set a 60-second timeout
-        signal.signal(signal.SIGALRM, timeout_handler)
-        signal.alarm(60)
-        
-        try:
-            app.logger.info("Starting WhatsApp connection...")
-            result = whatsapp_selenium.connect_to_whatsapp()
-            signal.alarm(0)  # Cancel the alarm
-        except TimeoutError:
-            signal.alarm(0)
-            app.logger.error("WhatsApp connection timed out")
-            return jsonify({
-                'success': False,
-                'message': 'Conexão demorou muito para responder. Tente novamente.'
-            }), 500
+        app.logger.info("Starting WhatsApp connection...")
+        result = whatsapp_selenium.connect_to_whatsapp()
         
         # Update database
         connection = WhatsAppConnection.query.first()

@@ -34,28 +34,23 @@ class WhatsAppSeleniumService:
         try:
             # Configure Firefox options
             options = Options()
-            # For development, run without headless to see what's happening
-            # options.add_argument('--headless')  # Commented out for debugging
+            options.add_argument('--headless')  # Run in background
             options.add_argument('--no-sandbox')
             options.add_argument('--disable-dev-shm-usage')
             options.add_argument('--disable-gpu')
-            options.add_argument('--window-size=1920,1080')
+            options.add_argument('--width=1920')
+            options.add_argument('--height=1080')
             
-            # Set up Firefox profile for session persistence
-            from selenium.webdriver.firefox.firefox_profile import FirefoxProfile
-            profile = FirefoxProfile()
-            profile.set_preference("dom.webnotifications.enabled", False)
-            profile.set_preference("media.autoplay.default", 2)
+            # Disable notifications and media autoplay
+            options.set_preference("dom.webnotifications.enabled", False)
+            options.set_preference("media.autoplay.default", 2)
+            options.set_preference("dom.disable_beforeunload", True)
             
-            # Use webdriver-manager to get geckodriver
-            try:
-                service = Service(GeckoDriverManager().install())
-            except Exception:
-                # Fallback to system geckodriver
-                service = Service()
+            # Use system geckodriver
+            service = Service()
             
             # Start Firefox
-            self.driver = webdriver.Firefox(service=service, options=options, firefox_profile=profile)
+            self.driver = webdriver.Firefox(service=service, options=options)
             self.driver.implicitly_wait(10)
             
             self.logger.info("Browser started successfully")

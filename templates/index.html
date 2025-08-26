@@ -177,12 +177,14 @@
 {% block scripts %}
 <script>
 function checkConnection() {
-    const button = event.target.closest('button');
-    const icon = button.querySelector('i');
+    const button = document.querySelector('.btn[onclick="checkConnection()"]');
+    const icon = button ? button.querySelector('i') : null;
     
     // Show loading state
-    button.disabled = true;
-    icon.className = 'fas fa-spinner fa-spin';
+    if (button) {
+        button.disabled = true;
+        if (icon) icon.className = 'fas fa-spinner fa-spin';
+    }
     
     fetch('/connection/check')
         .then(response => response.json())
@@ -194,8 +196,10 @@ function checkConnection() {
         })
         .finally(() => {
             // Reset button state
-            button.disabled = false;
-            icon.className = 'fas fa-sync-alt';
+            if (button) {
+                button.disabled = false;
+                if (icon) icon.className = 'fas fa-sync-alt';
+            }
         });
 }
 

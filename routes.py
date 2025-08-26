@@ -195,7 +195,8 @@ def add_template():
 def campaigns():
     campaigns = Campaign.query.order_by(Campaign.created_at.desc()).all()
     templates = MessageTemplate.query.all()
-    return render_template('campaigns.html', campaigns=campaigns, templates=templates)
+    contacts = Contact.query.all()
+    return render_template('campaigns.html', campaigns=campaigns, templates=templates, contacts=contacts)
 
 @app.route('/campaigns/create', methods=['POST'])
 def create_campaign():

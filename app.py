@@ -1,5 +1,6 @@
 import os
 import logging
+import json
 from flask import Flask
 from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy.orm import DeclarativeBase
@@ -24,6 +25,17 @@ app.config["SQLALCHEMY_ENGINE_OPTIONS"] = {
     "pool_recycle": 300,
     "pool_pre_ping": True,
 }
+
+# Add custom Jinja2 filters
+@app.template_filter('from_json')
+def from_json_filter(value):
+    """Convert JSON string to Python object"""
+    if not value:
+        return []
+    try:
+        return json.loads(value)
+    except (json.JSONDecodeError, TypeError):
+        return []
 
 # initialize the app with the extension
 db.init_app(app)

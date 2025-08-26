@@ -1,0 +1,318 @@
+{% extends "base.html" %}
+
+{% block title %}Histórico - WhatsApp Automation{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h1 class="h3 mb-0">
+                <i class="fas fa-history text-primary me-2"></i>
+                Histórico de Atividades
+            </h1>
+            <div class="btn-group">
+                <button class="btn btn-outline-secondary dropdown-toggle" data-bs-toggle="dropdown">
+                    <i class="fas fa-filter me-2"></i>Filtrar
+                </button>
+                <ul class="dropdown-menu">
+                    <li><a class="dropdown-item" href="?filter=all">Todas</a></li>
+                    <li><a class="dropdown-item" href="?filter=success">Sucessos</a></li>
+                    <li><a class="dropdown-item" href="?filter=error">Erros</a></li>
+                    <li><a class="dropdown-item" href="?filter=warning">Avisos</a></li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Activity Timeline -->
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-body">
+                {% if logs.items %}
+                    <div class="timeline">
+                        {% for log in logs.items %}
+                            <div class="timeline-item mb-4">
+                                <div class="timeline-marker">
+                                    {% if log.status == 'success' %}
+                                        <i class="fas fa-check-circle text-success"></i>
+                                    {% elif log.status == 'error' %}
+                                        <i class="fas fa-times-circle text-danger"></i>
+                                    {% elif log.status == 'warning' %}
+                                        <i class="fas fa-exclamation-triangle text-warning"></i>
+                                    {% else %}
+                                        <i class="fas fa-info-circle text-info"></i>
+                                    {% endif %}
+                                </div>
+                                <div class="timeline-content">
+                                    <div class="card">
+                                        <div class="card-body">
+                                            <div class="d-flex justify-content-between align-items-start mb-2">
+                                                <h6 class="card-title mb-1">
+                                                    {{ log.action|replace('_', ' ')|title }}
+                                                </h6>
+                                                <small class="text-muted">
+                                                    {{ log.timestamp.strftime('%d/%m/%Y %H:%M:%S') }}
+                                                </small>
+                                            </div>
+                                            
+                                            <p class="card-text">{{ log.details }}</p>
+                                            
+                                            <div class="d-flex justify-content-between align-items-center">
+                                                <span class="badge 
+                                                    {% if log.status == 'success' %}bg-success
+                                                    {% elif log.status == 'error' %}bg-danger
+                                                    {% elif log.status == 'warning' %}bg-warning
+                                                    {% else %}bg-info{% endif %}">
+                                                    {{ log.status|title }}
+                                                </span>
+                                                <small class="text-muted">
+                                                    {{ moment(log.timestamp).fromNow() if moment else log.timestamp.strftime('%H:%M') }}
+                                                </small>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        {% endfor %}
+                    </div>
+
+                    <!-- Pagination -->
+                    {% if logs.pages > 1 %}
+                        <nav aria-label="Pagination" class="mt-4">
+                            <ul class="pagination justify-content-center">
+                                {% if logs.has_prev %}
+                                    <li class="page-item">
+                                        <a class="page-link" href="{{ url_for('history', page=logs.prev_num) }}">
+                                            <i class="fas fa-chevron-left"></i>
+                                        </a>
+                                    </li>
+                                {% endif %}
+
+                                {% for page_num in logs.iter_pages() %}
+                                    {% if page_num %}
+                                        {% if page_num != logs.page %}
+                                            <li class="page-item">
+                                                <a class="page-link" href="{{ url_for('history', page=page_num) }}">
+                                                    {{ page_num }}
+                                                </a>
+                                            </li>
+                                        {% else %}
+                                            <li class="page-item active">
+                                                <span class="page-link">{{ page_num }}</span>
+                                            </li>
+                                        {% endif %}
+                                    {% else %}
+                                        <li class="page-item disabled">
+                                            <span class="page-link">...</span>
+                                        </li>
+                                    {% endif %}
+                                {% endfor %}
+
+                                {% if logs.has_next %}
+                                    <li class="page-item">
+                                        <a class="page-link" href="{{ url_for('history', page=logs.next_num) }}">
+                                            <i class="fas fa-chevron-right"></i>
+                                        </a>
+                                    </li>
+                                {% endif %}
+                            </ul>
+                        </nav>
+                    {% endif %}
+
+                    <!-- Summary Stats -->
+                    <div class="row mt-4">
+                        <div class="col-12">
+                            <div class="alert alert-info">
+                                <div class="row text-center">
+                                    <div class="col-md-3">
+                                        <h5 class="mb-1">{{ logs.total }}</h5>
+                                        <small>Total de Atividades</small>
+                                    </div>
+                                    <div class="col-md-3">
+                                        <h5 class="mb-1 text-success">
+                                            {{ logs.items|selectattr("status", "equalto", "success")|list|length }}
+                                        </h5>
+                                        <small>Sucessos</small>
+                                    </div>
+                                    <div class="col-md-3">
+                                        <h5 class="mb-1 text-danger">
+                                            {{ logs.items|selectattr("status", "equalto", "error")|list|length }}
+                                        </h5>
+                                        <small>Erros</small>
+                                    </div>
+                                    <div class="col-md-3">
+                                        <h5 class="mb-1 text-warning">
+                                            {{ logs.items|selectattr("status", "equalto", "warning")|list|length }}
+                                        </h5>
+                                        <small>Avisos</small>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                {% else %}
+                    <div class="text-center py-5">
+                        <i class="fas fa-history fa-3x text-muted mb-3"></i>
+                        <h5 class="text-muted">Nenhuma atividade encontrada</h5>
+                        <p class="text-muted">As atividades do sistema aparecerão aqui conforme você usar o sistema</p>
+                        <a href="{{ url_for('index') }}" class="btn btn-primary">
+                            <i class="fas fa-home me-2"></i>Voltar ao Dashboard
+                        </a>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Activity Categories Legend -->
+<div class="row mt-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h6 class="card-title mb-0">
+                    <i class="fas fa-info-circle me-2"></i>
+                    Tipos de Atividade
+                </h6>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <h6>Contatos</h6>
+                        <ul class="list-unstyled">
+                            <li><i class="fas fa-user-plus text-primary me-2"></i>Contato adicionado</li>
+                            <li><i class="fas fa-upload text-info me-2"></i>Contatos importados</li>
+                            <li><i class="fas fa-user-edit text-warning me-2"></i>Contato editado</li>
+                            <li><i class="fas fa-user-minus text-danger me-2"></i>Contato removido</li>
+                        </ul>
+                    </div>
+                    <div class="col-md-6">
+                        <h6>Campanhas</h6>
+                        <ul class="list-unstyled">
+                            <li><i class="fas fa-plus-circle text-primary me-2"></i>Campanha criada</li>
+                            <li><i class="fas fa-play text-success me-2"></i>Campanha iniciada</li>
+                            <li><i class="fas fa-check-circle text-success me-2"></i>Campanha concluída</li>
+                            <li><i class="fas fa-times-circle text-danger me-2"></i>Campanha falhou</li>
+                        </ul>
+                    </div>
+                </div>
+                <div class="row mt-3">
+                    <div class="col-md-6">
+                        <h6>Templates</h6>
+                        <ul class="list-unstyled">
+                            <li><i class="fas fa-file-plus text-primary me-2"></i>Template criado</li>
+                            <li><i class="fas fa-file-edit text-warning me-2"></i>Template editado</li>
+                            <li><i class="fas fa-file-minus text-danger me-2"></i>Template removido</li>
+                        </ul>
+                    </div>
+                    <div class="col-md-6">
+                        <h6>Sistema</h6>
+                        <ul class="list-unstyled">
+                            <li><i class="fas fa-plug text-success me-2"></i>WhatsApp conectado</li>
+                            <li><i class="fas fa-unlink text-danger me-2"></i>WhatsApp desconectado</li>
+                            <li><i class="fas fa-exclamation-triangle text-warning me-2"></i>Erro de conexão</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+$(document).ready(function() {
+    // Auto-refresh page every 30 seconds if on first page
+    {% if logs.page == 1 %}
+        setInterval(function() {
+            if (document.visibilityState === 'visible') {
+                location.reload();
+            }
+        }, 30000);
+    {% endif %}
+    
+    // Add smooth scroll animation for timeline
+    $('.timeline-item').each(function(index) {
+        $(this).delay(index * 100).fadeIn('fast');
+    });
+});
+
+// Function to export history as CSV
+function exportHistory() {
+    window.location.href = '/history/export';
+}
+
+// Function to clear old history
+function clearHistory() {
+    if (confirm('Tem certeza que deseja limpar o histórico? Esta ação não pode ser desfeita.')) {
+        // TODO: Implement clear history functionality
+        alert('Funcionalidade será implementada em breve');
+    }
+}
+</script>
+
+<style>
+.timeline {
+    position: relative;
+    padding-left: 3rem;
+}
+
+.timeline::before {
+    content: '';
+    position: absolute;
+    left: 1.5rem;
+    top: 0;
+    bottom: 0;
+    width: 2px;
+    background: var(--bs-border-color);
+}
+
+.timeline-item {
+    position: relative;
+    margin-bottom: 2rem;
+}
+
+.timeline-marker {
+    position: absolute;
+    left: -2.75rem;
+    top: 0.5rem;
+    width: 2rem;
+    height: 2rem;
+    border-radius: 50%;
+    background: var(--bs-body-bg);
+    border: 2px solid var(--bs-border-color);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.875rem;
+}
+
+.timeline-content {
+    margin-left: 1rem;
+}
+
+@media (max-width: 768px) {
+    .timeline {
+        padding-left: 1.5rem;
+    }
+    
+    .timeline::before {
+        left: 1rem;
+    }
+    
+    .timeline-marker {
+        left: -1.25rem;
+        width: 1.5rem;
+        height: 1.5rem;
+        font-size: 0.75rem;
+    }
+    
+    .timeline-content {
+        margin-left: 0.5rem;
+    }
+}
+</style>
+{% endblock %}

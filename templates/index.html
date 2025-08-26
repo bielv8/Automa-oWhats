@@ -1,0 +1,228 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard - WhatsApp Automation{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <h1 class="h3 mb-4">
+            <i class="fas fa-tachometer-alt text-primary me-2"></i>
+            Dashboard
+        </h1>
+    </div>
+</div>
+
+<!-- Statistics Cards -->
+<div class="row mb-4">
+    <div class="col-md-3">
+        <div class="card bg-primary">
+            <div class="card-body text-center">
+                <i class="fas fa-address-book fa-2x mb-3"></i>
+                <h3 class="card-title">{{ stats.contacts }}</h3>
+                <p class="card-text">Contatos</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card bg-info">
+            <div class="card-body text-center">
+                <i class="fas fa-file-alt fa-2x mb-3"></i>
+                <h3 class="card-title">{{ stats.templates }}</h3>
+                <p class="card-text">Templates</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card bg-warning">
+            <div class="card-body text-center">
+                <i class="fas fa-paper-plane fa-2x mb-3"></i>
+                <h3 class="card-title">{{ stats.campaigns }}</h3>
+                <p class="card-text">Campanhas Ativas</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card" id="connection-card">
+            <div class="card-body text-center">
+                <i class="fab fa-whatsapp fa-2x mb-3"></i>
+                <h5 class="card-title" id="connection-text">{{ connection.status|title }}</h5>
+                <p class="card-text">WhatsApp Web</p>
+                <button class="btn btn-sm btn-outline-light" onclick="checkConnection()">
+                    <i class="fas fa-sync-alt"></i> Verificar
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Quick Actions -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-bolt text-warning me-2"></i>
+                    Ações Rápidas
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-3">
+                        <a href="{{ url_for('contacts') }}" class="btn btn-outline-primary w-100 mb-2">
+                            <i class="fas fa-plus me-2"></i>Adicionar Contato
+                        </a>
+                    </div>
+                    <div class="col-md-3">
+                        <button class="btn btn-outline-info w-100 mb-2" data-bs-toggle="modal" data-bs-target="#importModal">
+                            <i class="fas fa-upload me-2"></i>Importar CSV
+                        </button>
+                    </div>
+                    <div class="col-md-3">
+                        <a href="{{ url_for('templates') }}" class="btn btn-outline-success w-100 mb-2">
+                            <i class="fas fa-file-plus me-2"></i>Novo Template
+                        </a>
+                    </div>
+                    <div class="col-md-3">
+                        <a href="{{ url_for('campaigns') }}" class="btn btn-outline-warning w-100 mb-2">
+                            <i class="fas fa-rocket me-2"></i>Nova Campanha
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Recent Activity -->
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-clock text-info me-2"></i>
+                    Atividade Recente
+                </h5>
+            </div>
+            <div class="card-body">
+                {% if recent_logs %}
+                    <div class="list-group list-group-flush">
+                        {% for log in recent_logs %}
+                            <div class="list-group-item d-flex justify-content-between align-items-start">
+                                <div class="ms-2 me-auto">
+                                    <div class="fw-bold">
+                                        {% if log.status == 'success' %}
+                                            <i class="fas fa-check-circle text-success me-2"></i>
+                                        {% elif log.status == 'error' %}
+                                            <i class="fas fa-times-circle text-danger me-2"></i>
+                                        {% else %}
+                                            <i class="fas fa-exclamation-triangle text-warning me-2"></i>
+                                        {% endif %}
+                                        {{ log.action|replace('_', ' ')|title }}
+                                    </div>
+                                    <small class="text-muted">{{ log.details }}</small>
+                                </div>
+                                <small class="text-muted">{{ log.timestamp.strftime('%H:%M') }}</small>
+                            </div>
+                        {% endfor %}
+                    </div>
+                {% else %}
+                    <div class="text-center text-muted py-4">
+                        <i class="fas fa-inbox fa-3x mb-3"></i>
+                        <p>Nenhuma atividade recente</p>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Import CSV Modal -->
+<div class="modal fade" id="importModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="fas fa-upload me-2"></i>Importar Contatos
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form action="{{ url_for('import_contacts') }}" method="POST" enctype="multipart/form-data">
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="file" class="form-label">Arquivo CSV</label>
+                        <input type="file" class="form-control" id="file" name="file" accept=".csv" required>
+                        <div class="form-text">
+                            O arquivo deve conter as colunas: nome, telefone, email, empresa
+                        </div>
+                    </div>
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle me-2"></i>
+                        <strong>Formato esperado:</strong><br>
+                        nome,telefone,email,empresa<br>
+                        João Silva,11999999999,joao@email.com,Empresa ABC
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-upload me-2"></i>Importar
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function checkConnection() {
+    const button = event.target.closest('button');
+    const icon = button.querySelector('i');
+    
+    // Show loading state
+    button.disabled = true;
+    icon.className = 'fas fa-spinner fa-spin';
+    
+    fetch('/connection/check')
+        .then(response => response.json())
+        .then(data => {
+            updateConnectionStatus(data);
+        })
+        .catch(error => {
+            console.error('Error checking connection:', error);
+        })
+        .finally(() => {
+            // Reset button state
+            button.disabled = false;
+            icon.className = 'fas fa-sync-alt';
+        });
+}
+
+function updateConnectionStatus(data) {
+    const card = document.getElementById('connection-card');
+    const text = document.getElementById('connection-text');
+    const statusBadge = document.getElementById('connection-status');
+    
+    if (data.status === 'connected') {
+        card.className = 'card bg-success';
+        text.textContent = 'Conectado';
+        statusBadge.className = 'badge bg-success';
+        statusBadge.innerHTML = '<i class="fas fa-circle me-1"></i>Conectado';
+    } else {
+        card.className = 'card bg-danger';
+        text.textContent = 'Desconectado';
+        statusBadge.className = 'badge bg-danger';
+        statusBadge.innerHTML = '<i class="fas fa-circle me-1"></i>Desconectado';
+    }
+}
+
+// Check connection status on page load
+document.addEventListener('DOMContentLoaded', function() {
+    checkConnection();
+    
+    // Auto-refresh connection status every 30 seconds
+    setInterval(checkConnection, 30000);
+});
+</script>
+{% endblock %}

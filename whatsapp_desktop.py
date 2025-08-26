@@ -123,20 +123,40 @@ class WhatsAppDesktopApp:
         logger.info("Database initialized successfully")
     
     def get_db_connection(self):
-        """Obtém conexão com o banco"""
-        conn = sqlite3.connect(self.db_path)
+        """Obtém conexão com o banco thread-safe"""
+        conn = sqlite3.connect(self.db_path, timeout=20.0, check_same_thread=False)
         conn.row_factory = sqlite3.Row
+        # Configura WAL mode para melhor concorrência
+        conn.execute('PRAGMA journal_mode=WAL;')
+        conn.execute('PRAGMA synchronous=NORMAL;')
+        conn.execute('PRAGMA temp_store=memory;')
+        conn.execute('PRAGMA mmap_size=268435456;')  # 256MB
         return conn
     
     def log_activity(self, action, details, status='success'):
-        """Registra atividade no log"""
-        conn = self.get_db_connection()
-        conn.execute(
-            'INSERT INTO activity_logs (action, details, status) VALUES (?, ?, ?)',
-            (action, details, status)
-        )
-        conn.commit()
-        conn.close()
+        """Registra atividade no log thread-safe"""
+        try:
+            conn = self.get_db_connection()
+            conn.execute(
+                'INSERT INTO activity_logs (action, details, status) VALUES (?, ?, ?)',
+                (action, details, status)
+            )
+            conn.commit()
+            conn.close()
+        except sqlite3.OperationalError as e:
+            logger.warning(f"Database busy during log_activity: {e}")
+            # Tenta novamente após um delay
+            time.sleep(0.1)
+            try:
+                conn = self.get_db_connection()
+                conn.execute(
+                    'INSERT INTO activity_logs (action, details, status) VALUES (?, ?, ?)',
+                    (action, details, status)
+                )
+                conn.commit()
+                conn.close()
+            except Exception as e2:
+                logger.error(f"Failed to log activity after retry: {e2}")
     
     def setup_routes(self):
         """Configura todas as rotas da aplicação"""
@@ -416,25 +436,32 @@ class WhatsAppDesktopApp:
                 
                 result = self.whatsapp_service.connect()
                 
-                # Atualiza status no banco
-                conn = self.get_db_connection()
-                if result.get('success'):
-                    conn.execute('''
-                        INSERT OR REPLACE INTO whatsapp_connection 
-                        (id, status, phone_number, profile_name, last_check) 
-                        VALUES (1, ?, ?, ?, ?)
-                    ''', ('connected', result.get('phone_number'), result.get('profile_name'), datetime.now()))
-                    self.log_activity('whatsapp_connected', 'WhatsApp Web conectado com sucesso')
-                else:
-                    conn.execute('''
-                        INSERT OR REPLACE INTO whatsapp_connection 
-                        (id, status, last_check) 
-                        VALUES (1, ?, ?)
-                    ''', ('disconnected', datetime.now()))
-                    self.log_activity('whatsapp_connection_failed', result.get('message', 'Falha na conexão'), 'error')
+                # Atualiza status no banco de forma thread-safe
+                try:
+                    conn = self.get_db_connection()
+                    if result.get('success'):
+                        conn.execute('''
+                            INSERT OR REPLACE INTO whatsapp_connection 
+                            (id, status, phone_number, profile_name, last_check) 
+                            VALUES (1, ?, ?, ?, ?)
+                        ''', ('connected', result.get('phone_number'), result.get('profile_name'), datetime.now()))
+                        # Log em thread separada para não bloquear
+                        threading.Thread(target=self.log_activity, args=('whatsapp_connected', 'WhatsApp Web conectado com sucesso')).start()
+                    else:
+                        conn.execute('''
+                            INSERT OR REPLACE INTO whatsapp_connection 
+                            (id, status, last_check) 
+                            VALUES (1, ?, ?)
+                        ''', ('disconnected', datetime.now()))
+                        # Log em thread separada para não bloquear
+                        threading.Thread(target=self.log_activity, args=('whatsapp_connection_failed', result.get('message', 'Falha na conexão'), 'error')).start()
+                    
+                    conn.commit()
+                    conn.close()
+                except sqlite3.OperationalError as db_error:
+                    logger.warning(f"Database busy during connect: {db_error}")
+                    # Continua sem salvar no banco se estiver travado
                 
-                conn.commit()
-                conn.close()
                 return jsonify(result)
                 
             except Exception as e:
@@ -451,17 +478,21 @@ class WhatsAppDesktopApp:
                 if self.whatsapp_service:
                     self.whatsapp_service.disconnect()
                 
-                # Atualiza status no banco
-                conn = self.get_db_connection()
-                conn.execute('''
-                    INSERT OR REPLACE INTO whatsapp_connection 
-                    (id, status, last_check) 
-                    VALUES (1, ?, ?)
-                ''', ('disconnected', datetime.now()))
-                conn.commit()
-                conn.close()
-                
-                self.log_activity('whatsapp_disconnected', 'WhatsApp Web desconectado')
+                # Atualiza status no banco de forma thread-safe
+                try:
+                    conn = self.get_db_connection()
+                    conn.execute('''
+                        INSERT OR REPLACE INTO whatsapp_connection 
+                        (id, status, last_check) 
+                        VALUES (1, ?, ?)
+                    ''', ('disconnected', datetime.now()))
+                    conn.commit()
+                    conn.close()
+                    
+                    # Log em thread separada
+                    threading.Thread(target=self.log_activity, args=('whatsapp_disconnected', 'WhatsApp Web desconectado')).start()
+                except sqlite3.OperationalError as db_error:
+                    logger.warning(f"Database busy during disconnect: {db_error}")
                 
                 return jsonify({
                     'success': True,

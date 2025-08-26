@@ -628,28 +628,67 @@ class WhatsAppWebService:
         try:
             logger.info("Iniciando conexão com WhatsApp Web...")
             
-            # Configura Chrome
+            # Configura Chrome com múltiplas opções para Windows
             options = Options()
+            
+            # Opções básicas para estabilidade
             options.add_argument('--no-sandbox')
             options.add_argument('--disable-dev-shm-usage')
             options.add_argument('--disable-web-security')
+            options.add_argument('--disable-features=VizDisplayCompositor')
+            options.add_argument('--disable-extensions')
+            options.add_argument('--disable-plugins')
+            options.add_argument('--disable-images')  # Acelera carregamento
+            options.add_argument('--disable-javascript')  # Reduz problemas
+            options.add_argument('--disable-gpu')  # Fix para Windows
+            options.add_argument('--remote-debugging-port=9222')
+            
+            # Session persistente
             options.add_argument('--user-data-dir=./whatsapp_session')
             
-            # Inicia browser
-            try:
-                from webdriver_manager.chrome import ChromeDriverManager
-                from selenium.webdriver.chrome.service import Service
-                service = Service(ChromeDriverManager().install())
-                self.driver = webdriver.Chrome(service=service, options=options)
-            except:
-                # Fallback para Chrome padrão
-                self.driver = webdriver.Chrome(options=options)
+            # Força modo compatibilidade
+            options.add_argument('--disable-blink-features=AutomationControlled')
+            options.add_experimental_option("excludeSwitches", ["enable-automation"])
+            options.add_experimental_option('useAutomationExtension', False)
+            
+            # Tentativas múltiplas de inicialização
+            self.driver = None
+            attempts = [
+                # Tentativa 1: WebDriver Manager
+                lambda: self._try_webdriver_manager(options),
+                # Tentativa 2: Chrome local
+                lambda: self._try_local_chrome(options),
+                # Tentativa 3: Firefox (fallback)
+                lambda: self._try_firefox(),
+                # Tentativa 4: Edge (fallback)
+                lambda: self._try_edge()
+            ]
+            
+            for i, attempt in enumerate(attempts, 1):
+                try:
+                    logger.info(f"Tentativa {i} de inicializar browser...")
+                    self.driver = attempt()
+                    if self.driver:
+                        logger.info(f"Browser iniciado com sucesso (tentativa {i})")
+                        break
+                except Exception as e:
+                    logger.warning(f"Tentativa {i} falhou: {e}")
+                    if i == len(attempts):
+                        raise Exception("Todos os browsers falharam")
+            
+            if not self.driver:
+                raise Exception("Não foi possível inicializar nenhum browser")
+            
+            # Configura user agent para evitar detecção
+            self.driver.execute_script("Object.defineProperty(navigator, 'webdriver', {get: () => undefined})")
             
             # Acessa WhatsApp Web
+            logger.info("Acessando WhatsApp Web...")
             self.driver.get("https://web.whatsapp.com")
             
-            # Aguarda carregar
-            time.sleep(3)
+            # Aguarda carregar com timeout
+            logger.info("Aguardando página carregar...")
+            time.sleep(5)
             
             # Verifica se já está logado
             try:
@@ -820,6 +859,71 @@ class WhatsAppWebService:
             logger.info("WhatsApp Web desconectado")
         except Exception as e:
             logger.error(f"Erro ao desconectar: {e}")
+    
+    def _try_webdriver_manager(self, options):
+        """Tenta usar WebDriver Manager"""
+        try:
+            from webdriver_manager.chrome import ChromeDriverManager
+            from selenium.webdriver.chrome.service import Service
+            service = Service(ChromeDriverManager().install())
+            return webdriver.Chrome(service=service, options=options)
+        except:
+            return None
+    
+    def _try_local_chrome(self, options):
+        """Tenta usar Chrome local"""
+        try:
+            # Paths comuns do Chrome no Windows
+            chrome_paths = [
+                r"C:\Program Files\Google\Chrome\Application\chrome.exe",
+                r"C:\Program Files (x86)\Google\Chrome\Application\chrome.exe",
+                r"C:\Users\{}\AppData\Local\Google\Chrome\Application\chrome.exe".format(os.getenv('USERNAME', 'User'))
+            ]
+            
+            for path in chrome_paths:
+                if os.path.exists(path):
+                    options.binary_location = path
+                    return webdriver.Chrome(options=options)
+            return None
+        except:
+            return None
+    
+    def _try_firefox(self):
+        """Tenta usar Firefox como fallback"""
+        try:
+            from selenium.webdriver.firefox.options import Options as FirefoxOptions
+            from selenium.webdriver.firefox.service import Service as FirefoxService
+            
+            firefox_options = FirefoxOptions()
+            firefox_options.add_argument('--headless')  # Roda em background
+            
+            try:
+                from webdriver_manager.firefox import GeckoDriverManager
+                service = FirefoxService(GeckoDriverManager().install())
+                return webdriver.Firefox(service=service, options=firefox_options)
+            except:
+                return webdriver.Firefox(options=firefox_options)
+        except:
+            return None
+    
+    def _try_edge(self):
+        """Tenta usar Edge como último recurso"""
+        try:
+            from selenium.webdriver.edge.options import Options as EdgeOptions
+            from selenium.webdriver.edge.service import Service as EdgeService
+            
+            edge_options = EdgeOptions()
+            edge_options.add_argument('--no-sandbox')
+            edge_options.add_argument('--disable-dev-shm-usage')
+            
+            try:
+                from webdriver_manager.microsoft import EdgeChromiumDriverManager
+                service = EdgeService(EdgeChromiumDriverManager().install())
+                return webdriver.Edge(service=service, options=edge_options)
+            except:
+                return webdriver.Edge(options=edge_options)
+        except:
+            return None
 
 def main():
     """Função principal"""

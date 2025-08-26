@@ -34,8 +34,8 @@ class WhatsAppSeleniumService:
         try:
             # Configure Firefox options
             options = Options()
-            # Remove headless mode so we can capture QR codes properly
-            # options.add_argument('--headless')  # Commented out for QR code visibility
+            # Use headless mode for Replit environment
+            options.add_argument('--headless')
             options.add_argument('--no-sandbox')
             options.add_argument('--disable-dev-shm-usage')
             options.add_argument('--disable-gpu')
@@ -44,6 +44,8 @@ class WhatsAppSeleniumService:
             options.add_argument('--disable-blink-features=AutomationControlled')
             options.add_argument('--disable-extensions')
             options.add_argument('--disable-plugins-discovery')
+            options.add_argument('--disable-web-security')
+            options.add_argument('--allow-running-insecure-content')
             
             # Disable notifications and media autoplay
             options.set_preference("dom.webnotifications.enabled", False)
@@ -53,9 +55,10 @@ class WhatsAppSeleniumService:
             # Use system geckodriver
             service = Service()
             
-            # Start Firefox
+            # Start Firefox with timeout
             self.driver = webdriver.Firefox(service=service, options=options)
             self.driver.implicitly_wait(10)
+            self.driver.set_page_load_timeout(30)
             
             self.logger.info("Browser started successfully")
             return True
@@ -67,16 +70,20 @@ class WhatsAppSeleniumService:
     def connect_to_whatsapp(self):
         """Connect to WhatsApp Web"""
         try:
+            self.logger.info("Starting WhatsApp Web connection...")
+            
             if not self.driver:
+                self.logger.info("Starting browser...")
                 if not self.start_browser():
                     return {'success': False, 'message': 'Falha ao iniciar navegador'}
             
-            # Navigate to WhatsApp Web
+            # Navigate to WhatsApp Web with timeout
+            self.logger.info("Navigating to WhatsApp Web...")
             self.driver.get('https://web.whatsapp.com')
             self.logger.info("Navigated to WhatsApp Web")
             
-            # Wait for page to load
-            time.sleep(8)
+            # Wait for page to load with shorter timeout
+            time.sleep(5)
             
             # Check if already logged in
             if self.is_logged_in():

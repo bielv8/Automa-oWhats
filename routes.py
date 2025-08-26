@@ -298,7 +298,27 @@ def check_connection():
 def connect_whatsapp():
     """Connect to WhatsApp Web"""
     try:
-        result = whatsapp_selenium.connect_to_whatsapp()
+        # Add timeout for the connection attempt
+        import signal
+        
+        def timeout_handler(signum, frame):
+            raise TimeoutError("Connection timeout")
+        
+        # Set a 60-second timeout
+        signal.signal(signal.SIGALRM, timeout_handler)
+        signal.alarm(60)
+        
+        try:
+            app.logger.info("Starting WhatsApp connection...")
+            result = whatsapp_selenium.connect_to_whatsapp()
+            signal.alarm(0)  # Cancel the alarm
+        except TimeoutError:
+            signal.alarm(0)
+            app.logger.error("WhatsApp connection timed out")
+            return jsonify({
+                'success': False,
+                'message': 'Conexão demorou muito para responder. Tente novamente.'
+            }), 500
         
         # Update database
         connection = WhatsAppConnection.query.first()
@@ -321,6 +341,7 @@ def connect_whatsapp():
         connection.last_check = datetime.utcnow()
         db.session.commit()
         
+        app.logger.info(f"WhatsApp connection result: {result}")
         return jsonify(result)
         
     except Exception as e:

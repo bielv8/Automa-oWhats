@@ -188,21 +188,21 @@
 {% block scripts %}
 <script>
 // Clear any existing intervals to prevent conflicts
-if (typeof connectionCheckInterval !== 'undefined' && connectionCheckInterval) {
-    clearInterval(connectionCheckInterval);
+if (typeof window.whatsappConnectionInterval !== 'undefined' && window.whatsappConnectionInterval) {
+    clearInterval(window.whatsappConnectionInterval);
 }
-if (typeof qrCheckInterval !== 'undefined' && qrCheckInterval) {
-    clearInterval(qrCheckInterval);
+if (typeof window.whatsappQrInterval !== 'undefined' && window.whatsappQrInterval) {
+    clearInterval(window.whatsappQrInterval);
 }
 
-// Global variables for polling intervals
-var connectionCheckInterval;
-var qrCheckInterval;
+// Global variables for polling intervals - using window namespace to avoid conflicts
+window.whatsappConnectionInterval = null;
+window.whatsappQrInterval = null;
 
 $(document).ready(function() {
     checkConnection();
     // Auto-refresh connection status every 10 seconds
-    connectionCheckInterval = setInterval(checkConnection, 10000);
+    window.whatsappConnectionInterval = setInterval(checkConnection, 10000);
 });
 
 function checkConnection() {
@@ -326,8 +326,8 @@ function disconnectWhatsApp() {
                 showNotification('WhatsApp Web desconectado', 'info');
                 checkConnection();
                 $('#qr-section').hide();
-                if (qrCheckInterval) {
-                    clearInterval(qrCheckInterval);
+                if (window.whatsappQrInterval) {
+                    clearInterval(window.whatsappQrInterval);
                 }
             } else {
                 showNotification(data.message || 'Erro ao desconectar', 'error');
@@ -353,14 +353,14 @@ function showQRCode(qrData) {
 
 function startQRPolling() {
     // Check every 5 seconds if login was successful
-    qrCheckInterval = setInterval(() => {
+    window.whatsappQrInterval = setInterval(() => {
         checkConnection();
     }, 5000);
     
     // Stop polling after 2 minutes
     setTimeout(() => {
-        if (qrCheckInterval) {
-            clearInterval(qrCheckInterval);
+        if (window.whatsappQrInterval) {
+            clearInterval(window.whatsappQrInterval);
         }
     }, 120000);
 }
@@ -399,11 +399,11 @@ function showNotification(message, type) {
 
 // Cleanup intervals when page is closed
 $(window).on('beforeunload', function() {
-    if (connectionCheckInterval) {
-        clearInterval(connectionCheckInterval);
+    if (window.whatsappConnectionInterval) {
+        clearInterval(window.whatsappConnectionInterval);
     }
-    if (qrCheckInterval) {
-        clearInterval(qrCheckInterval);
+    if (window.whatsappQrInterval) {
+        clearInterval(window.whatsappQrInterval);
     }
 });
 </script>

@@ -187,8 +187,13 @@
 
 {% block scripts %}
 <script>
-let connectionCheckInterval;
-let qrCheckInterval;
+// Global variables for polling intervals
+if (typeof connectionCheckInterval === 'undefined') {
+    var connectionCheckInterval;
+}
+if (typeof qrCheckInterval === 'undefined') {
+    var qrCheckInterval;
+}
 
 $(document).ready(function() {
     checkConnection();

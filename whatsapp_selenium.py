@@ -69,9 +69,10 @@ class WhatsAppSeleniumService:
             
             # Navigate to WhatsApp Web
             self.driver.get('https://web.whatsapp.com')
+            self.logger.info("Navigated to WhatsApp Web")
             
             # Wait for page to load
-            time.sleep(5)
+            time.sleep(8)
             
             # Check if already logged in
             if self.is_logged_in():
@@ -84,17 +85,22 @@ class WhatsAppSeleniumService:
                 }
             
             # Look for QR code
+            self.logger.info("Looking for QR code...")
             qr_code = self.get_qr_code()
             if qr_code:
+                self.logger.info("QR code captured successfully")
                 return {
                     'success': True,
                     'status': 'qr_code',
                     'qr_code': qr_code,
                     'message': 'Escaneie o código QR com seu celular'
                 }
-            
-            # Wait for login
-            return self.wait_for_login()
+            else:
+                self.logger.warning("QR code not found")
+                return {
+                    'success': False,
+                    'message': 'QR Code não encontrado. Tente recarregar a página.'
+                }
             
         except Exception as e:
             self.logger.error(f"Failed to connect to WhatsApp: {e}")
@@ -117,33 +123,59 @@ class WhatsAppSeleniumService:
     def get_qr_code(self):
         """Get QR code for login"""
         try:
-            # Try different QR code selectors
+            if not self.driver:
+                self.logger.error("Driver not initialized")
+                return None
+                
+            # Wait a bit more for the page to fully load
+            time.sleep(3)
+            
+            # Take a screenshot first to see what's on the page
+            self.logger.info("Taking screenshot to debug page content")
+            
+            # Try different QR code selectors with more wait time
             qr_selectors = [
                 '[data-testid="qr-code"]',
-                'canvas[aria-label*="qr"]',
+                'canvas[aria-label*="qr"]', 
+                'canvas[aria-label*="QR"]',
                 '.qr-code',
-                'canvas'
+                'canvas',
+                '[data-ref="qr"]',
+                'img[alt*="qr"]',
+                'img[alt*="QR"]'
             ]
             
             qr_element = None
             for selector in qr_selectors:
                 try:
-                    qr_element = WebDriverWait(self.driver, 5).until(
+                    self.logger.info(f"Trying selector: {selector}")
+                    qr_element = WebDriverWait(self.driver, 10).until(
                         EC.presence_of_element_located((By.CSS_SELECTOR, selector))
                     )
                     self.logger.info(f"Found QR code with selector: {selector}")
                     break
                 except TimeoutException:
+                    self.logger.info(f"Selector {selector} not found")
                     continue
             
             if not qr_element:
-                self.logger.warning("QR code element not found with any selector")
-                return None
+                # If no QR element found, try to take a screenshot of the login area
+                self.logger.warning("QR code element not found, taking full page screenshot")
+                try:
+                    # Try to find the login area
+                    login_area = self.driver.find_element(By.CSS_SELECTOR, '[data-testid="intro-wrapper"]')
+                    qr_image = login_area.screenshot_as_png
+                    self.logger.info("Captured login area screenshot")
+                except:
+                    # Fallback to full page screenshot
+                    qr_image = self.driver.get_screenshot_as_png()
+                    self.logger.info("Captured full page screenshot as fallback")
+            else:
+                # Get QR code image
+                qr_image = qr_element.screenshot_as_png
+                self.logger.info("Captured QR code element screenshot")
             
-            # Get QR code image
-            qr_image = qr_element.screenshot_as_png
             qr_base64 = base64.b64encode(qr_image).decode('utf-8')
-            
             self.qr_code_data = qr_base64
             return qr_base64
             
@@ -444,7 +476,8 @@ class WhatsAppSeleniumService:
             log = ActivityLog(
                 action=action,
                 details=details,
-                status=status
+                status=status,
+                timestamp=datetime.utcnow()
             )
             db.session.add(log)
             db.session.commit()

@@ -9,6 +9,8 @@ venv/
 ENV/
 env.bak/
 venv.bak/
+.pythonlibs/
+.cache/
 
 # Flask
 instance/
@@ -17,10 +19,12 @@ instance/
 # Database
 *.db
 *.sqlite3
+whatsapp_automation.db
 
 # WhatsApp session data
 whatsapp_session.json
 *.pkl
+geckodriver.log
 
 # Environment variables
 .env
@@ -28,7 +32,8 @@ whatsapp_session.json
 
 # Selenium
 *.log
-geckodriver.log
+geckodriver
+chromedriver
 
 # OS
 .DS_Store
@@ -51,3 +56,13 @@ Thumbs.db
 # Logs
 logs/
 *.log
+
+# Large files that can cause deployment issues
+node_modules/
+dist/
+build/
+
+# Temporary files
+tmp/
+temp/
+*.tmp

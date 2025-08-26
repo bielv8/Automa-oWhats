@@ -4,6 +4,24 @@
 1. Conta no Railway (railway.app)
 2. GitHub/GitLab conectado ao Railway
 
+## ⚠️ SOLUÇÃO PARA ERRO DE SNAPSHOT
+
+Se aparecer "Failed to snapshot repository", faça:
+
+1. **Limpe arquivos cache localmente:**
+   ```bash
+   git rm --cached -r .cache/ || true
+   git add .gitignore
+   git commit -m "Clean cache files for Railway deploy"
+   ```
+
+2. **Force push se necessário:**
+   ```bash
+   git push --force-with-lease
+   ```
+
+3. **Tente deploy novamente no Railway**
+
 ## Passos para Deploy
 
 ### 1. Conectar Repositório

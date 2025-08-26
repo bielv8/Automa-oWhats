@@ -50,13 +50,13 @@
                     
                     <div class="col-md-6">
                         <div class="d-grid gap-2">
-                            <button id="connect-btn" class="btn btn-success" onclick="connectWhatsApp()">
+                            <button id="connect-btn" class="btn btn-success">
                                 <i class="fas fa-plug me-2"></i>Conectar WhatsApp Web
                             </button>
-                            <button id="disconnect-btn" class="btn btn-danger" onclick="disconnectWhatsApp()" style="display: none;">
+                            <button id="disconnect-btn" class="btn btn-danger" style="display: none;">
                                 <i class="fas fa-unlink me-2"></i>Desconectar
                             </button>
-                            <button id="refresh-btn" class="btn btn-outline-primary" onclick="checkConnection()">
+                            <button id="refresh-btn" class="btn btn-outline-primary">
                                 <i class="fas fa-sync-alt me-2"></i>Verificar Status
                             </button>
                         </div>
@@ -124,7 +124,7 @@
                             O QR Code expira em alguns minutos. Se não conseguir escanear, clique em "Conectar" novamente.
                         </div>
                         
-                        <button class="btn btn-outline-warning" onclick="connectWhatsApp()">
+                        <button class="btn btn-outline-warning" id="new-qr-btn">
                             <i class="fas fa-redo me-2"></i>Novo QR Code
                         </button>
                     </div>
@@ -203,6 +203,12 @@ $(document).ready(function() {
     checkConnection();
     // Auto-refresh connection status every 10 seconds
     window.whatsappConnectionInterval = setInterval(checkConnection, 10000);
+    
+    // Event handlers
+    $('#connect-btn').on('click', connectWhatsApp);
+    $('#disconnect-btn').on('click', disconnectWhatsApp);
+    $('#refresh-btn').on('click', checkConnection);
+    $('#new-qr-btn').on('click', connectWhatsApp);
 });
 
 function checkConnection() {

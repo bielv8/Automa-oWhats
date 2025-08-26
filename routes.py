@@ -2,7 +2,7 @@ from flask import render_template, request, redirect, url_for, flash, jsonify
 from app import app, db
 from models import Contact, MessageTemplate, Campaign, CampaignContact, WhatsAppConnection, ActivityLog
 from whatsapp_service import WhatsAppService
-from whatsapp_mock import WhatsAppMockService
+from whatsapp_selenium import WhatsAppSeleniumService
 import csv
 import json
 import io
@@ -10,7 +10,7 @@ from datetime import datetime
 import re
 
 whatsapp_service = WhatsAppService()
-whatsapp_selenium = WhatsAppMockService()
+whatsapp_selenium = WhatsAppSeleniumService()
 
 @app.route('/')
 def index():

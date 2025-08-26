@@ -32,9 +32,8 @@ class WhatsAppSeleniumService:
     def start_browser(self):
         """Initialize and start the browser"""
         try:
-            # Configure Firefox options
+            # Configure Firefox options for Railway deployment
             options = Options()
-            # Use headless mode for Replit environment
             options.add_argument('--headless')
             options.add_argument('--no-sandbox')
             options.add_argument('--disable-dev-shm-usage')
@@ -46,14 +45,30 @@ class WhatsAppSeleniumService:
             options.add_argument('--disable-plugins-discovery')
             options.add_argument('--disable-web-security')
             options.add_argument('--allow-running-insecure-content')
+            options.add_argument('--disable-background-timer-throttling')
+            options.add_argument('--disable-backgrounding-occluded-windows')
+            options.add_argument('--disable-renderer-backgrounding')
+            options.add_argument('--disable-features=TranslateUI')
+            options.add_argument('--disable-ipc-flooding-protection')
+            
+            # Railway specific configurations
+            options.add_argument('--single-process')
+            options.add_argument('--disable-background-networking')
+            options.add_argument('--disable-default-apps')
+            options.add_argument('--disable-sync')
+            
+            # Set display for Railway
+            if os.environ.get('RAILWAY_ENVIRONMENT'):
+                os.environ['DISPLAY'] = ':99'
             
             # Disable notifications and media autoplay
             options.set_preference("dom.webnotifications.enabled", False)
             options.set_preference("media.autoplay.default", 2)
             options.set_preference("dom.disable_beforeunload", True)
             
-            # Use system geckodriver
-            service = Service()
+            # Use webdriver manager for Railway compatibility
+            from webdriver_manager.firefox import GeckoDriverManager
+            service = Service(GeckoDriverManager().install())
             
             # Start Firefox with timeout
             self.driver = webdriver.Firefox(service=service, options=options)

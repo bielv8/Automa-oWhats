@@ -98,7 +98,7 @@ def import_contacts():
         flash('Nenhum arquivo selecionado', 'error')
         return redirect(url_for('contacts'))
     
-    if not file.filename.lower().endswith('.csv'):
+    if not (file.filename and file.filename.lower().endswith('.csv')):
         flash('Apenas arquivos CSV são aceitos', 'error')
         return redirect(url_for('contacts'))
     

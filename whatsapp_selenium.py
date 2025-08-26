@@ -34,12 +34,16 @@ class WhatsAppSeleniumService:
         try:
             # Configure Firefox options
             options = Options()
-            options.add_argument('--headless')  # Run in background
+            # Remove headless mode so we can capture QR codes properly
+            # options.add_argument('--headless')  # Commented out for QR code visibility
             options.add_argument('--no-sandbox')
             options.add_argument('--disable-dev-shm-usage')
             options.add_argument('--disable-gpu')
             options.add_argument('--width=1920')
             options.add_argument('--height=1080')
+            options.add_argument('--disable-blink-features=AutomationControlled')
+            options.add_argument('--disable-extensions')
+            options.add_argument('--disable-plugins-discovery')
             
             # Disable notifications and media autoplay
             options.set_preference("dom.webnotifications.enabled", False)

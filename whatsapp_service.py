@@ -1,8 +1,6 @@
 import random
 import time
 from datetime import datetime
-from app import db
-from models import Campaign, CampaignContact, ActivityLog
 import logging
 
 class WhatsAppService:
@@ -174,10 +172,16 @@ class WhatsAppService:
     
     def log_activity(self, action, details, status='success'):
         """Log activity to database"""
-        log = ActivityLog(
-            action=action,
-            details=details,
-            status=status
-        )
-        db.session.add(log)
-        db.session.commit()
+        # Import here to avoid circular imports
+        try:
+            from app import db
+            from models import ActivityLog
+            log = ActivityLog(
+                action=action,
+                details=details,
+                status=status
+            )
+            db.session.add(log)
+            db.session.commit()
+        except ImportError:
+            self.logger.warning(f"Could not log activity: {action} - {details}")

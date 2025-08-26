@@ -14,8 +14,7 @@ from selenium.common.exceptions import TimeoutException, NoSuchElementException,
 import qrcode
 from io import BytesIO
 import base64
-from app import db
-from models import Campaign, CampaignContact, ActivityLog, WhatsAppConnection
+# Imports will be done locally to avoid circular import issues
 
 class WhatsAppSeleniumService:
     """
@@ -514,6 +513,9 @@ class WhatsAppSeleniumService:
     def log_activity(self, action, details, status='success'):
         """Log activity to database"""
         try:
+            # Import here to avoid circular imports
+            from app import db
+            from models import ActivityLog
             log = ActivityLog(
                 action=action,
                 details=details,
